@@ -664,19 +664,19 @@ var QUIZ_DATA = {
 };
 
 /* ===== 彩蛋动画配置（仅一年级有动画） =====
-   34集分配：1+1+2+2+3+3+4+4+5+9 = 34
-   key=单元id, value=该单元第一集动画文件名 */
+   24集分配：1+1+1+2+2+2+3+3+4+5 = 24
+   key=单元id, value={file:动画文件名, ep:中文集数名} */
 var EGG_ANIMATION = {
-  1: "1.1. Wake Me Up.mp4",
-  2: "2. I belive i can fly.mp4",
-  3: "3. Hide and seek.mp4",
-  4: "5. Snack Attack.mp4",
-  5: "7. The Winner Takes It All.mp4",
-  6: "10.Lifted.mp4",
-  7: "13. Along for the Ride!.mp4",
-  8: "17. Flat.mp4",
-  9: "21.If At First You Don't Succeed.mp4",
-  10: "26. my banana.mp4"
+  1:  { file: "anim01.mp4", ep: "第一集" },
+  2:  { file: "anim02.mp4", ep: "第一集" },
+  3:  { file: "anim03.mp4", ep: "第一集" },
+  4:  { file: "anim04.mp4", ep: "第一集" },
+  5:  { file: "anim06.mp4", ep: "第一集" },
+  6:  { file: "anim08.mp4", ep: "第一集" },
+  7:  { file: "anim10.mp4", ep: "第一集" },
+  8:  { file: "anim13.mp4", ep: "第一集" },
+  9:  { file: "anim16.mp4", ep: "第一集" },
+  10: { file: "anim20.mp4", ep: "第一集" }
 };
 
 var GRADE_NAMES = ["一年级", "二年级", "三年级", "四年级", "五年级", "六年级"];
@@ -1055,9 +1055,10 @@ function qFinish() {
   var detail = allCorrect ? "奖励你看一集动画片。" : "答对 " + qCorrect + " / " + qQuestions.length + " 题";
 
   var bottom;
-  if (allCorrect && EGG_ANIMATION[currentUnitId]) {
+  var egg = EGG_ANIMATION[currentUnitId];
+  if (allCorrect && egg) {
     bottom =
-      '<button class="q-egg-btn" id="qEggBtn">▶ 点击播放第一集</button>' +
+      '<button class="q-egg-btn" id="qEggBtn">▶ 播放' + egg.ep + '</button>' +
       '<div style="margin-top:14px;"><button class="q-retry-btn q-back" id="qExitBtn" style="max-width:160px;">✕ 退出练习</button></div>';
   } else {
     bottom = '<div class="q-retry-row">' +
@@ -1075,11 +1076,11 @@ function qFinish() {
     '</div>';
   qProgressFill.style.width = "100%";
 
-  if (allCorrect && EGG_ANIMATION[currentUnitId]) {
+  if (allCorrect && egg) {
     document.getElementById("qEggBtn").addEventListener("click", function() {
       var overlay = document.getElementById("eggOverlay");
       var video = document.getElementById("eggVideo");
-      video.src = RESOURCE_BASE + "media/animation/" + EGG_ANIMATION[currentUnitId];
+      video.src = RESOURCE_BASE + "media/animation/" + egg.file;
       overlay.classList.add("show");
       video.play();
     });
