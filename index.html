@@ -272,19 +272,21 @@ var WORDS_DATA = [{"id": 1, "grade": 1, "book": "上册", "title": "Unit 1 Hello
 /* ===== 视频映射：单元id -> { key: {file, label} } =====
    chant/read 基础视频；ext/words/dialog/topic 为各册拓展视频 */
 var VIDEO_MAP = {
-  1: { chant: { file: "u1_chant.mp4", label: "Let's chant" }, read: { file: "u1_read.mp4", label: "Let's read" } },
+  1: { chant: { file: "u1_chant.mp4", label: "Let's chant" }, read: { file: "u1_read.mp4", label: "Let's read" }, kb: { file: "u1_kb.mp4", label: "知识点讲解" } },
   2: {
     chant: { file: "u2_chant.mp4", label: "Let's chant" },
     read: { file: "u2_read.mp4", label: "Let's read" },
+    kb: { file: "u2_kb.mp4", label: "知识点讲解" },
     ext: { file: "u2_ext.mp4", label: "One little finger" }
   },
   3: {
     chant: { file: "u3_chant.mp4", label: "Let's chant" },
     read: { file: "u3_read.mp4", label: "Let's read" },
+    kb: { file: "u3_kb.mp4", label: "知识点讲解" },
     ext: { file: "u3_ext.mp4", label: "I See Something Blue" }
   },
-  4: { chant: { file: "u4_chant.mp4", label: "Let's chant" }, read: { file: "u4_read.mp4", label: "Let's read" } },
-  5: { chant: { file: "u5_chant.mp4", label: "Let's chant" }, read: { file: "u5_read.mp4", label: "Let's read" } },
+  4: { chant: { file: "u4_chant.mp4", label: "Let's chant" }, read: { file: "u4_read.mp4", label: "Let's read" }, kb: { file: "u4_kb.mp4", label: "知识点讲解" } },
+  5: { chant: { file: "u5_chant.mp4", label: "Let's chant" }, read: { file: "u5_read.mp4", label: "Let's read" }, kb: { file: "u5_kb.mp4", label: "知识点讲解" } },
   6: {
     chant: { file: "u6_chant.mp4", label: "Let's chant" },
     read: { file: "u6_read.mp4", label: "Let's read" },
@@ -426,7 +428,34 @@ function renderWords(unit) {
   });
 }
 
-/* ===== 音频朗读 ===== */
+/* ===== 音频朗读（全局复用 + 首次交互自动解锁） ===== */
+var wordAudio = new Audio();
+var audioUnlocked = false;
+var SILENT_WAV = "data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+// 首次用户交互时解锁音频播放权限（微信/Chrome 自动播放策略）
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  wordAudio.src = SILENT_WAV;
+  wordAudio.volume = 0;
+  var p = wordAudio.play();
+  if (p && p.then) {
+    p.then(function () {
+      setTimeout(function () {
+        try { wordAudio.pause(); } catch (e) {}
+        wordAudio.volume = 1;
+      }, 60);
+    }).catch(function () {
+      wordAudio.volume = 1;
+    });
+  }
+  document.removeEventListener("click", unlockAudioOnce);
+  document.removeEventListener("touchstart", unlockAudioOnce);
+}
+document.addEventListener("click", unlockAudioOnce);
+document.addEventListener("touchstart", unlockAudioOnce);
+
 function playWord(card) {
   var src = card.dataset.audio;
   if (currentAudio) {
@@ -435,22 +464,25 @@ function playWord(card) {
   }
   if (speakingCard) { speakingCard.classList.remove("speaking"); speakingCard = null; }
 
-  var a = new Audio(src);
-  currentAudio = a;
+  if (!audioUnlocked) unlockAudioOnce();
+
+  currentAudio = wordAudio;
   speakingCard = card;
   card.classList.add("speaking");
-  a.onended = function () {
+  wordAudio.onended = function () {
     card.classList.remove("speaking");
     if (speakingCard === card) speakingCard = null;
-    if (currentAudio === a) currentAudio = null;
+    if (currentAudio === wordAudio) currentAudio = null;
   };
-  a.onerror = function () {
+  wordAudio.onerror = function () {
     card.classList.remove("speaking");
     if (speakingCard === card) speakingCard = null;
-    if (currentAudio === a) currentAudio = null;
+    if (currentAudio === wordAudio) currentAudio = null;
     toast("音频加载失败：" + src);
   };
-  var p = a.play();
+  wordAudio.src = src;
+  wordAudio.load();
+  var p = wordAudio.play();
   if (p && p.catch) {
     p.catch(function () {
       card.classList.remove("speaking");
